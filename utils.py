@@ -4,7 +4,13 @@ import skimage.measure
 import scipy
 from time import localtime, strftime
 import logging
+import os
+import tensorflow as tf
 
+def scale_img(x):
+    x = x- np.min(x)
+    x = x/np.max(x)
+    return x
 
 def distort_img(x):
     x = (x + 1.) / 2.

@@ -3,7 +3,10 @@ from model import *
 from utils import *
 from config import config, log_config
 from scipy.io import loadmat, savemat
-
+import tensorlayer as tl
+import tensorflow as tf
+import os
+import time
 
 def main_train():
     mask_perc = tl.global_flag['maskperc']
@@ -25,6 +28,7 @@ def main_train():
     tl.files.exists_or_mkdir(save_dir)
 
     # configs
+    print(config)
     batch_size = config.TRAIN.batch_size
     early_stopping_num = config.TRAIN.early_stopping_num
     g_alpha = config.TRAIN.g_alpha
@@ -84,6 +88,14 @@ def main_train():
     # ==================================== DEFINE MODEL ==================================== #
 
     print('[*] define model ... ')
+
+    X_train = X_train[:,:,:,np.newaxis]
+    X_val = X_val[:,:,:,np.newaxis]
+    X_test = X_test[:,:,:,np.newaxis]
+
+    X_train= np.transpose(X_train,[2,0,1,3])
+    X_val = np.transpose(X_val,[2,0,1,3])
+    X_test = np.transpose(X_test,[2,0,1,3])
 
     nw, nh, nz = X_train.shape[1:]
 
@@ -173,7 +185,7 @@ def main_train():
     # ==================================== TRAINING ==================================== #
 
     sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
-    tl.layers.initialize_global_variables(sess)
+    sess.run(tf.global_variables_initializer())
 
     # load generator and discriminator weights (for continuous training purpose)
     tl.files.load_and_assign_npz(sess=sess,
@@ -197,7 +209,7 @@ def main_train():
     n_step_epoch = round(n_training_examples / batch_size)
 
     # sample testing images
-    idex = tl.utils.get_random_int(min=0, max=len(X_test) - 1, number=sample_size, seed=config.TRAIN.seed)
+    idex = tl.utils.get_random_int(min_v=0, max_v=len(X_test) - 1, number=sample_size, seed=config.TRAIN.seed)
     X_samples_good = X_test[idex]
     X_samples_bad = threading_data(X_samples_good, fn=to_bad_img, mask=mask)
 
@@ -250,7 +262,7 @@ def main_train():
 
         for step in range(n_step_epoch):
             step_time = time.time()
-            idex = tl.utils.get_random_int(min=0, max=n_training_examples - 1, number=batch_size)
+            idex = tl.utils.get_random_int(min_v=0, max_v=n_training_examples - 1, number=batch_size)
             X_good = X_train[idex]
             X_good_aug = threading_data(X_good, fn=distort_img)
             X_good_244 = threading_data(X_good_aug, fn=vgg_prepro)
@@ -467,8 +479,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--model', type=str, default='unet', help='unet, unet_refine')
-    parser.add_argument('--mask', type=str, default='gaussian2d', help='gaussian1d, gaussian2d, poisson2d')
-    parser.add_argument('--maskperc', type=int, default='30', help='10,20,30,40,50')
+    parser.add_argument('--mask', type=str, default='gaussian1d', help='gaussian1d, gaussian2d, poisson2d')
+    parser.add_argument('--maskperc', type=int, default='20', help='10,20,30,40,50')
 
     args = parser.parse_args()
 
